@@ -24,7 +24,8 @@ def calculate_rank_order_distance(nn_ids):
 
     nsamples, k = nn_ids.shape
     # rank order distances between samples and k-NN
-    D = np.ones((nsamples,nsamples))*-1
+    D = np.full((nsamples,nsamples), np.inf)
+
     # track samples that have been compared
     touched = np.zeros(nsamples).astype(np.float)
     for x in tqdm(range(nsamples)):
@@ -35,23 +36,20 @@ def calculate_rank_order_distance(nn_ids):
         a_nnlist = nn_ids[a_id,:] - 1            # NN list for face a
 
         for y, b_id in enumerate(a_nnlist):
-            # id of sample face b
-            ## for each of its k-NN
+            # for each of its k-NN, id of sample face b
             # kth NN of face a (i.e., face b)
 
             # if face_b has been as face_a
-            # if distance between pairs was already claculated
-            if not D[b_id,a_id]<0:
+
+            if not np.isinf(D[b_id,a_id]):
+                # if distance between pairs was already calculated
                 continue
 
-            b_nnlist = nn_ids[b_id,:]   - 1        # NN list for face a
+            b_nnlist = nn_ids[b_id,:] - 1        # NN list for face a
 
 
             # if face a is in face b's NN list, then determine its rank;
             rank_a = np.where(b_nnlist == a_id)[0]
-
-            # else, if face a is not in face b's NN list, or
-            # if (isempty(rank_a) || touched(b_id)), continue; end
 
             if len(rank_a)==0:
                 rank_a = [k - 1]
@@ -59,17 +57,10 @@ def calculate_rank_order_distance(nn_ids):
                 # already been computed between faces (with a-b flipped)
             elif touched[b_id]==1:
                 print("?")
-
-
-            #          if isempty(rank_a), rank_a = k; end
             #  determine rank of face b in face a's NN list (just y)
             rank_b = y
 
-            #  get face b's NN list
-            #         b_vec = nn_ids(b_id,:);
-
             #  assymmetric rank order distance (0 for every shared NN; else, 1);
-
             d_ba = sum([np.any(a == b_nnlist) for a in a_nnlist[:rank_b]])
             d_ab = sum([np.any(b == a_nnlist) for b in b_nnlist[rank_a]])
 
@@ -81,7 +72,6 @@ def calculate_rank_order_distance(nn_ids):
             D[b_id,a_id] = D[a_id,b_id]
             if np.isnan(D[b_id,a_id]):
                 print()
-
         #  mark current face for being compared to its entire NN list
         touched[a_id] = 1
     return D
@@ -94,5 +84,5 @@ if __name__ == '__main__':
     print("Took {}".format(time.time() - start))
     # np.fromfile('Dmatrix.csv', sep=',')
     D.tofile('Dmatrix_new.csv', sep=',', format='%10.5f')
-
+    # 44.91146397590637
     print()
