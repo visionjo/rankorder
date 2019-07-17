@@ -43,35 +43,38 @@ def calculate_rank_order_distance(nn_ids):
 
     # track samples that have been compared
     touched = np.zeros(nsamples).astype(np.float)
-    for a_id, key in tqdm(enumerate(nn_ids.keys())):
+    for i, (a_id, a_nnlist) in tqdm(enumerate(nn_ids.items())):
         # for each sample
 
         # current face encoding (i.e., face a)
-        a_nnlist = nn_ids[key]  # NN list for face a
+        # a_nnlist = nn_ids[key]  # NN list for face a
 
         bdict = {a: nn_ids[a] for a in a_nnlist}
 
-        for rank_b, b_id in enumerate(bdict.keys()):
+        for rank_b, (b_id, b_nnlist) in enumerate(bdict.items()):
             # for each of its k-NN, id of sample face b is also its rank on NN of face a.
 
             if not np.isinf(D[rank_b, a_id]):
                 # if already calculated (i.e., if face_b has been as face_a)
                 continue
 
-            b_nnlist = nn_ids[rank_b]  # NN list for face a
+            # b_nnlist = nn_ids[rank_b]  # NN list for face a
 
             # if face a is in face b's NN list, then determine its rank;
             rank_a = np.where(b_nnlist == a_id)[0]
-            if len(rank_a) == 0:
-                # min(O_a, k), where O_a is rank of NN list, thus, set as k if match is not in top k
-                rank_a = k
+            # min(O_a, k), where O_a is rank of NN list, thus, set as k if match is not in top k
 
+            if np.size(rank_a) and touched[b_id] == 1:
+                # print("Recalculated distances for face pairs in reverse order (i.e., b-a, flipped).")
+                print(D[a_id, b_id])
+                continue
             elif touched[b_id] == 1:
-                print("Recalculated distances for face pairs in reverse order (i.e., b-a, flipped)... shouldn't be'")
+                # print("Recalculated distances for face pairs in reverse order (i.e., b-a, flipped).")
+                continue
+            rank_a = int(rank_a) + 1 if len(rank_a) > 0 else k
 
-            rank_a = int(rank_a)
-
-            denom = rank_a + 1 if rank_a < rank_b else rank_b + 1
+            rank_b += 1
+            denom = rank_a if rank_a < rank_b else rank_b
 
             #  assymmetric rank order distance (0 for every shared NN; else, 1);
             d_ba = sum([not np.any(a == b_nnlist) for a in a_nnlist[:rank_b]])
@@ -80,29 +83,30 @@ def calculate_rank_order_distance(nn_ids):
             D[a_id, b_id] = (d_ab + d_ba) / denom if denom > 0 else np.nan
             D[b_id, a_id] = D[a_id, b_id]
             if np.isnan(D[b_id, a_id]):
-                print('NAN. Likely an attempt to divide by zero when normalizing above.')
-        #  mark current face for being compared to its entire NN list
+                print("NAN. Shouldn't be. Likely an attempt to divide by zero when normalizing above.")
+        #  touch, as no need to do calculation between item a and all of its neighbors again (i.e., symmetric)
+        # however, since only processing upper triangle part of D matrix, such redundancy should not occur
         touched[a_id] = 1
     return D
 
 
 def transitively_merge_clusters(D, nn_dict, Eps=1.6, C=None):
-    ##  Threshold rank-order distance matrix.
-    #  Transitively step through matrix, merging each pairs w distances below
-    #  threshold Eps into same cluster.
+    """
+    Threshold rank-order distance matrix.
+
+    Transitively step through matrix, merging each pairs w distances below threshold Eps into same cluster.
+
+    Provided constraint matrix C, 'must-' and
+    :param D:           Rank order distance matrix
+    :param nn_dict:
+    :param Eps:         Rank order distance threshold (i.e., epsilon) [default 1.6]
+    :param C:           Constraint matrix [default zeros(size(D))]
+    :return:            Cluster ID assignments (cluster_tags)
+
+    SEE CALCULATE_RANK_ORDER_DISTANCE()
+    """
+
     #
-    #  Provided constraint matrix C, 'must-' and
-    #
-    #  @param D     Rank order distance matrix
-    #  @param Eps   Rank order distance threshold (i.e., epsilon) [default 1.6]
-    #  @param C     Constraint matrix [default zeros(size(D))]
-    #
-    #  @return cluster_tags    Cluster ID assignments
-    #
-    #  @author Joseph P. Robinson
-    #  @date 2019 July 17
-    #
-    #  SEE CALCULATE_RANK_ORDER_DISTANCE()
     #
 
     if C is None:
@@ -173,4 +177,4 @@ if __name__ == '__main__':
     for eps in tqdm(eps_arr):
         results_lut[eps] = transitively_merge_clusters(dmatrix, nn_lut, eps)
 
-    pd.to_pickle(results_lut, 'results_lut2.pkl')
+    pd.to_pickle(results_lut, 'results_lut.pkl')
