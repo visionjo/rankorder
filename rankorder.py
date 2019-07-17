@@ -16,10 +16,29 @@
 #  [1] Otto, Charles, Dayong Wang, and Anil K. Jain. "Clustering millions
 #  of faces by identity." arXiv preprint arXiv:1604.00989 (2016).
 #
-from utils.io import load_mat
+# from utils.io import load_mat, read_pickle
 import numpy as np
 from tqdm import tqdm
 import time
+import pandas as pd
+from sklearn.neighbors import NearestNeighbors
+
+def build_nn_lists(feature_file='../pytorch-face/data/eval-features.pkl',k=20,
+                    algorithm='kd_tree'):
+    """Build knn lists for N samples. Return Nxk array with N being each sample index and k being knn indices"""
+
+    print('##### Build Tree #####')
+
+    feature_dict = pd.read_pickle(feature_file)
+    print('##### {} Closest Points for {} samples.s#####'.format(str(k),len(feature_dict)))
+
+    #  Compute top-k NN for each face encoding
+    nbrs = NearestNeighbors(n_neighbors=k+1, algorithm=algorithm).fit(feature_dict['X'])
+    distances, indices = nbrs.kneighbors(feature_dict['X'])
+
+    return indices
+
+
 def calculate_rank_order_distance(nn_ids):
 
     nsamples, k = nn_ids.shape
@@ -79,8 +98,8 @@ def calculate_rank_order_distance(nn_ids):
 if __name__ == '__main__':
     print('Rank order')
     start = time.time()
-    ids_mat = load_mat('kdtree_100.mat')
-    D =calculate_rank_order_distance(ids_mat['ids_mat'])
+    ids_mat = pd.read_pickle('kd_tree_20.pkl')
+    D =calculate_rank_order_distance(ids_mat)
     print("Took {}".format(time.time() - start))
     # np.fromfile('Dmatrix.csv', sep=',')
     D.tofile('Dmatrix_new.csv', sep=',', format='%10.5f')
