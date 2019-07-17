@@ -57,10 +57,8 @@ def calculate_rank_order_distance(nn_ids):
             # for each of its k-NN, id of sample face b
             # kth NN of face a (i.e., face b)
 
-            # if face_b has been as face_a
-
             if not np.isinf(D[b_id,a_id]):
-                # if distance between pairs was already calculated
+                # if distance between pairs was calculated (i.e., if face_b has been as face_a)
                 continue
 
             b_nnlist = nn_ids[b_id,:] - 1        # NN list for face a
@@ -94,6 +92,16 @@ def calculate_rank_order_distance(nn_ids):
         touched[a_id] = 1
     return D
 
+def check_files_and_conditions(build_knn, calculate_dmatrix, file_knn_matrix, file_d_matrix, file_feature):
+    if is_file(file_feature):
+        return True
+    elif is_file(file_knn_matrix) and not build_knn:
+        return True
+    elif is_file(file_d_matrix) and not calculate_dmatrix:
+        return True
+    print("Check features files and/or KNN list or D-Matrix exist.")
+    return False
+
 if __name__ == '__main__':
     build_knn = False
     calculate_dmatrix = False
@@ -102,29 +110,15 @@ if __name__ == '__main__':
     file_d_matrix = 'dmatrix_20.pkl'
     file_feature = '../pytorch-face/data/eval-features.pkl'
     print('Rank order')
+    if not check_files_and_conditions(build_knn, calculate_dmatrix, file_knn_matrix, file_d_matrix, file_feature):
+        exit(0)
     start = time.time()
 
-    if not build_knn and is_file(file_knn_matrix):
-        ids_mat = pd.read_pickle(file_knn_matrix)
-        print('##### {} Closest Points for {} samples.s#####'.format(str(k), len(ids_mat)))
-    elif not is_file(file_feature):
-        print('No features ({}) or NN Lists ({}) files Exists.\nExit(0)'.format(file_feature, file_knn_matrix))
-        exit(0)
-    else:
-        ids_mat = build_nn_lists(file_feature)
-        pd.to_pickle(ids_mat, file_knn_matrix)
-    if not calculate_dmatrix and is_file(file_d_matrix):
-        dmatrix = pd.read_pickle(file_d_matrix)
-    else:
-        print('Calculating distance matrix')
-        dmatrix =calculate_rank_order_distance(ids_mat)
-        pd.to_pickle(dmatrix, file_d_matrix)
+    ids_mat = pd.read_pickle(file_knn_matrix) if (not build_knn and is_file(file_knn_matrix)) else \
+        build_nn_lists(file_feature)
 
+    dmatrix = pd.read_pickle(file_d_matrix) if (not calculate_dmatrix and is_file(file_d_matrix)) else\
+        calculate_rank_order_distance(ids_mat)
 
     print("Took {}".format(time.time() - start))
-
-    # D.tofile('Dmatrix_new.csv', sep=',', format='%10.5f')
-
-
-    # 44.91146397590637
     print()
