@@ -24,20 +24,25 @@ import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 
 
-def build_nn_lists(feature_file, k=20, algorithm='kd_tree'):
+def build_nn_lists(features, k=20, algorithm='kd_tree'):
     """Build knn lists for N samples. Return Nxk array with N being each sample index and k being knn indices"""
 
-    feature_dict = pd.read_pickle(feature_file)
+    if is_file(features):
+        feature_dict = pd.read_pickle(features)
+    else:
+        feature_dict = {'X': features}
 
     #  Compute top-k NN for each face encoding
     nbrs = NearestNeighbors(n_neighbors=k + 1, algorithm=algorithm).fit(feature_dict['X'])
     distances, indices = nbrs.kneighbors(feature_dict['X'])
 
-    return indices
+    return {i[0]: i[1:] for i in indices}
 
 
 def calculate_rank_order_distance(nn_ids):
     nsamples = len(nn_ids)
+    if nsamples > 0:
+        k = len(nn_ids[0])
     # rank order distances between samples and k-NN
     D = np.full((nsamples, nsamples), np.inf)
 
@@ -66,7 +71,7 @@ def calculate_rank_order_distance(nn_ids):
 
             if np.size(rank_a) and touched[b_id] == 1:
                 # print("Recalculated distances for face pairs in reverse order (i.e., b-a, flipped).")
-                print(D[a_id, b_id])
+                # print(D[a_id, b_id])
                 continue
             elif touched[b_id] == 1:
                 # print("Recalculated distances for face pairs in reverse order (i.e., b-a, flipped).")
