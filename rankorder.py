@@ -22,6 +22,12 @@ from tqdm import tqdm
 import time
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import LabelEncoder
+
+def encode_ids(ids):
+    le = LabelEncoder()
+    le.fit(ids)
+    return le.transform(ids)
 
 
 def build_nn_lists(features, k=20, algorithm='kd_tree'):
@@ -142,7 +148,7 @@ def transitively_merge_clusters(D, nn_dict, Eps=1.6, C=None):
         # c_tag = np.min([cluster_tags[x], cluster_tags[x+1:] & c_to_merge)]);
         cluster_tags[x:][c_to_merge] = c_tag
 
-    return cluster_tags
+    return encode_ids(cluster_tags)
 
 
 def check_files_and_conditions(build_knn, calculate_dmatrix, file_knn_matrix, file_d_matrix, file_feature):
